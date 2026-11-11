@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Pixelify+Sans:wght@400;600&display=swap">
 <style>
-:root{color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;height:100%}
+:root{color-scheme:dark;height:100%;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
 body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 img{max-width:100%}[hidden]{display:none!important}
 </style>
@@ -111,6 +111,11 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .final{font-family:var(--display);font-size:28px;color:var(--fg);margin:0;font-variant-numeric:tabular-nums}
 .best{font-size:14px;color:var(--accent);margin:0}
 </style>
+<style>
+/* App shell: fill exactly the visible screen and keep clear of the notch and home bar. */
+#app{position:fixed;inset:0;height:auto;padding-top:calc(var(--sat) + 8px);padding-bottom:calc(var(--sab) + 8px)}
+#mid{overflow:hidden}
+</style>
 </head>
 <body>
 <div id="app">
@@ -127,7 +132,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     <div id="stage">
       <canvas id="cv" aria-label="Pinball table"></canvas>
       <div class="overlay" id="menu">
-        <p class="brand">RANZPINBALL <span class="ver">v1.00</span></p>
+        <p class="brand">RANZPINBALL <span class="ver">v1.01</span></p>
         <h1 id="menuTitle">Block<br>Quarry</h1>
         <p class="sub">Pixel pinball for your thumbs</p>
         <h2>TABLE</h2>
@@ -142,7 +147,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
         <button class="big" id="resumeBtn">KEEP PLAYING</button>
         <button class="theme" id="quitBtn" style="justify-content:center;max-width:220px"><b>CHANGE TABLE</b></button>
         <p class="help">Changing table ends this game.</p>
-        <p class="ver">RanzPinball v1.00</p>
+        <p class="ver">RanzPinball v1.01</p>
       </div>
       <div class="overlay" id="over" hidden>
         <h2>GAME OVER</h2>
@@ -824,7 +829,7 @@ $('toMenu').addEventListener('click',()=>{$('over').hidden=true;$('menu').hidden
 
 // ---------- Sizing ----------
 function resize(){
-  const mid=$('mid'),mw=mid.clientWidth-54-8,mh=mid.clientHeight;
+  const mid=$('mid'),mw=mid.clientWidth-54-8-14,mh=mid.clientHeight-14; // leave room for the 6px frame
   const s=Math.max(0.3,Math.min(mw/W,mh/H)),cw=Math.floor(W*s),ch=Math.floor(H*s),dpr=Math.min(3,devicePixelRatio||1);
   cv.style.width=cw+'px';cv.style.height=ch+'px';cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);
   ctx.setTransform(cv.width/W,0,0,cv.height/H,0,0);
@@ -833,6 +838,14 @@ function resize(){
 }
 addEventListener('resize',resize);
 if(window.visualViewport)visualViewport.addEventListener('resize',resize);
+// Re-fit whenever the space really changes: late safe-area insets on iPhone, font swap, rotation.
+let fitQueued=false;
+function refit(){if(fitQueued)return;fitQueued=true;requestAnimationFrame(()=>{fitQueued=false;resize();});}
+if(window.ResizeObserver){const ro=new ResizeObserver(refit);ro.observe($('mid'));ro.observe($('app'));}
+addEventListener('orientationchange',()=>setTimeout(resize,250));
+addEventListener('pageshow',refit);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(refit);
+[150,600,1500].forEach(t=>setTimeout(refit,t));
 
 // ---------- Loop ----------
 let last=performance.now();
